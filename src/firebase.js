@@ -5,7 +5,6 @@ import { getAuth } from "firebase/auth";
 
 // นำค่า Config นี้มาจาก Firebase Console -> Project Settings
 const firebaseConfig = {
-const firebaseConfig = {
   apiKey: "AIzaSyBVzI69dZ27Rtc8RxMEZje6lq-VFwwwAfc",
   authDomain: "freshket-onboarding.firebaseapp.com",
   projectId: "freshket-onboarding",

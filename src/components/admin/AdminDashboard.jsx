@@ -1,111 +1,147 @@
 import React from 'react';
-import { User, AlertCircle, Eye, CheckCircle, Search, Filter, Phone as PhoneIcon, Mail } from 'lucide-react';
+import { UserPlus, Plus, Send, Clock, Eye, Mail, CheckCircle, User } from 'lucide-react';
 
-const AdminDashboard = ({ employees, onReview, onSendOTP, onSendWelcome }) => (
-  <div className="space-y-8 animate-in">
-    {/* Stats Cards Section */}
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-      {[
-        { label: 'Total', count: 65, color: 'bg-slate-100 text-slate-600', icon: User },
-        { label: 'Incomplete', count: 12, color: 'bg-orange-50 text-[#F37021]', icon: AlertCircle },
-        { label: 'Pending Review', count: 5, color: 'bg-blue-50 text-blue-500', icon: Eye },
-        { label: 'Verified', count: 48, color: 'bg-emerald-50 text-[#00ce7c]', icon: CheckCircle },
-      ].map((stat, i) => (
-        <div key={i} className="fkt-card flex items-center gap-5">
-          <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${stat.color}`}>
-            <stat.icon size={22} />
-          </div>
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{stat.label}</p>
-            <p className="text-3xl font-bold text-slate-800">{stat.count}</p>
-          </div>
-        </div>
-      ))}
-    </div>
+const Badge = ({ status }) => {
+  const styles = {
+    DRAFT: 'bg-slate-100 text-slate-600 border-slate-200',
+    SENT: 'bg-blue-50 text-blue-600 border-blue-100',
+    SUBMITTED: 'bg-purple-50 text-purple-600 border-purple-100',
+    INCOMPLETE: 'bg-orange-50 text-orange-600 border-orange-100',
+    VERIFIED: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+    COMPLETED: 'bg-slate-800 text-white border-slate-800',
+  };
+  return (
+    <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${styles[status] || styles.DRAFT}`}>
+      {status}
+    </span>
+  );
+};
 
-    {/* Table Section */}
-    <div className="fkt-card border-none overflow-hidden p-0">
-      <div className="p-6 border-b border-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h3 className="font-bold text-lg text-slate-800">รายชื่อพนักงานใหม่ (New Joiners)</h3>
-        <div className="flex items-center gap-3">
-          <div className="relative w-full md:w-auto">
-             <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-             <input type="text" placeholder="ค้นหาชื่อ..." className="pl-10 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-lg text-sm outline-none w-full" />
-          </div>
-          <button className="p-2.5 bg-slate-50 border border-slate-100 rounded-lg text-slate-500 hover:bg-slate-100 transition-all"><Filter size={18} /></button>
-        </div>
+const ActionButtons = ({ emp, onAction }) => {
+  // --- Status State Machine Logic ---
+  
+  // 1. DRAFT: เพิ่งสร้าง -> รอส่ง Link
+  if (emp.status === 'DRAFT') {
+    return (
+      <button onClick={() => onAction('SEND_OTP', emp)} className="text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 ml-auto">
+        <Send size={12} /> Send Link
+      </button>
+    );
+  }
+
+  // 2. SENT: ส่งแล้ว -> รอพนักงานกรอก (เช็ค Expiry)
+  if (emp.status === 'SENT') {
+    const isExpired = new Date() > new Date(emp.tokenExpiresAt);
+    return (
+      <div className="flex items-center justify-end gap-2 text-xs text-slate-400">
+        <Clock size={12} /> {isExpired ? <span className="text-red-500 font-bold">Expired</span> : 'Waiting...'}
+        {isExpired && (
+          <button onClick={() => onAction('RESEND_OTP', emp)} className="text-orange-500 hover:text-orange-600 font-bold underline ml-1">Resend</button>
+        )}
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-left">
-          <thead className="bg-slate-50/50">
-            <tr>
-              <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">พนักงาน</th>
-              <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">ตำแหน่ง / แผนก</th>
-              <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center whitespace-nowrap">การดำเนินการ</th>
-              <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">สถานะ</th>
-              <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right whitespace-nowrap">จัดการ</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50">
-            {employees.map((emp, i) => (
-              <tr key={i} className="hover:bg-slate-50/30 transition-colors">
-                <td className="p-6 whitespace-nowrap">
-                   <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full bg-emerald-50 text-[#00ce7c] flex items-center justify-center font-bold text-xs uppercase">{emp.name.charAt(0)}</div>
-                      <div>
-                        <p className="font-bold text-slate-700">{emp.name}</p>
-                        <p className="text-xs text-slate-400 font-inter">{emp.email}</p>
-                      </div>
-                   </div>
-                </td>
-                <td className="p-6 whitespace-nowrap">
-                  <p className="text-sm font-bold text-slate-600">{emp.position}</p>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{emp.department}</p>
-                </td>
-                <td className="p-6 text-center whitespace-nowrap">
-                   <div className="flex justify-center gap-2">
-                      <button 
-                        disabled={emp.status !== 'Incomplete' || emp.otpSent}
-                        onClick={() => onSendOTP(i)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all border ${
-                          emp.status === 'Incomplete' && !emp.otpSent 
-                          ? 'bg-white border-blue-200 text-blue-600 hover:bg-blue-50' 
-                          : 'bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed'
-                        }`}
-                      >
-                        <PhoneIcon size={12} /> {emp.otpSent ? 'OTP SENT' : 'SEND OTP'}
-                      </button>
+    );
+  }
 
-                      {emp.status === 'Verified' && (
-                        <button 
-                          onClick={() => onSendWelcome(emp.name)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold bg-white border-[#00ce7c] text-[#00ce7c] hover:bg-emerald-50 transition-all border"
-                        >
-                          <Mail size={12} /> SEND WELCOME
-                        </button>
-                      )}
-                   </div>
-                </td>
-                <td className="p-6 whitespace-nowrap">
-                  <span className={`status-pill ${
-                    emp.status === 'Verified' ? 'bg-emerald-100 text-emerald-700' : 
-                    emp.status === 'Pending' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'
-                  }`}>
-                    {emp.status}
-                  </span>
-                </td>
-                <td className="p-6 text-right whitespace-nowrap">
-                  <button className="p-2.5 bg-white border border-slate-100 rounded-lg text-slate-400 hover:text-[#00ce7c] hover:border-[#00ce7c] transition-all">
-                    <Eye size={18} />
-                  </button>
-                </td>
+  // 3. SUBMITTED / INCOMPLETE: พนักงานส่งแล้ว -> รอ Admin ตรวจ
+  if (['SUBMITTED', 'INCOMPLETE'].includes(emp.status)) {
+    return (
+      <button onClick={() => onAction('VERIFY', emp)} className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 ml-auto transition-all ${
+        emp.status === 'INCOMPLETE' ? 'bg-orange-100 text-orange-700 border border-orange-200 hover:bg-orange-200' : 'bg-purple-100 text-purple-700 border border-purple-200 hover:bg-purple-200'
+      }`}>
+        <Eye size={12} /> {emp.status === 'INCOMPLETE' ? 'Review (Docs Missing)' : 'Verify Data'}
+      </button>
+    );
+  }
+
+  // 4. VERIFIED: ตรวจผ่านแล้ว -> รอส่งเมลต้อนรับ
+  if (emp.status === 'VERIFIED') {
+    return (
+      <button onClick={() => onAction('SEND_WELCOME', emp)} className="text-emerald-600 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 ml-auto border border-emerald-200">
+        <Mail size={12} /> Send Welcome
+      </button>
+    );
+  }
+
+  // 5. COMPLETED: จบกระบวนการ
+  return <span className="text-xs text-slate-300 font-bold flex items-center justify-end gap-1"><CheckCircle size={12}/> Done</span>;
+};
+
+const AdminDashboard = ({ employees, onCreate, onAction }) => {
+  return (
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Header Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { l: 'Pending Action', v: employees.filter(e => ['SUBMITTED','INCOMPLETE','VERIFIED'].includes(e.status)).length, c: 'text-orange-500 bg-orange-50' },
+          { l: 'Onboarding', v: employees.filter(e => e.status !== 'COMPLETED').length, c: 'text-blue-500 bg-blue-50' },
+          { l: 'Completed', v: employees.filter(e => e.status === 'COMPLETED').length, c: 'text-emerald-500 bg-emerald-50' },
+          { l: 'Total', v: employees.length, c: 'text-slate-600 bg-slate-100' },
+        ].map((s,i) => (
+          <div key={i} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-400 uppercase">{s.l}</span>
+            <span className={`text-2xl font-black ${s.c} px-3 py-1 rounded-lg`}>{s.v}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Action Bar */}
+      <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+        <h2 className="font-bold text-lg text-slate-700 flex items-center gap-2">
+          <User className="text-emerald-500" size={20}/> รายชื่อพนักงาน (New Joiners)
+        </h2>
+        <button onClick={onCreate} className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-bold text-sm transition-all flex items-center gap-2 shadow-lg shadow-emerald-200">
+          <Plus size={16} /> สร้างพนักงานใหม่ (Draft)
+        </button>
+      </div>
+
+      {/* Table */}
+      <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="bg-slate-50/50 text-slate-400 text-[10px] uppercase font-black tracking-wider">
+              <tr>
+                <th className="p-4">พนักงาน</th>
+                <th className="p-4">ตำแหน่ง / แผนก</th>
+                <th className="p-4">วันเริ่มงาน</th>
+                <th className="p-4">สถานะ</th>
+                <th className="p-4 text-right">ดำเนินการ</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {employees.length === 0 ? (
+                <tr><td colSpan="5" className="p-8 text-center text-slate-400">ยังไม่มีข้อมูล</td></tr>
+              ) : employees.map((emp) => (
+                <tr key={emp.id} className="hover:bg-slate-50/50 transition-colors">
+                  <td className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center font-bold text-xs text-slate-500">
+                        {emp.employee.name.charAt(0)}
+                      </div>
+                      <div>
+                        <div className="font-bold text-slate-700 text-sm">{emp.employee.name}</div>
+                        <div className="text-xs text-slate-400">{emp.employee.email}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <div className="font-bold text-slate-600 text-xs">{emp.employee.position}</div>
+                    <div className="text-[10px] text-slate-400 uppercase">{emp.employee.department}</div>
+                  </td>
+                  <td className="p-4 text-xs font-medium text-slate-500">
+                    {emp.employee.startDate}
+                  </td>
+                  <td className="p-4"><Badge status={emp.status} /></td>
+                  <td className="p-4 text-right">
+                    <ActionButtons emp={emp} onAction={onAction} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default AdminDashboard;

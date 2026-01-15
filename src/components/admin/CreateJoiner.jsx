@@ -22,7 +22,7 @@ const CreateJoiner = ({ onCreated }) => {
 
     setLoading(true);
     try {
-      // 1. Save to Firestore with 'DRAFT' status
+      // Save to Firestore with 'DRAFT' status
       await addDoc(collection(db, "onboardings"), {
         employee: { ...form },
         status: 'DRAFT',
@@ -34,7 +34,7 @@ const CreateJoiner = ({ onCreated }) => {
       onCreated();
     } catch (error) {
       console.error("Error adding document: ", error);
-      alert("เกิดข้อผิดพลาดในการบันทึก");
+      alert("เกิดข้อผิดพลาดในการบันทึก: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -99,7 +99,7 @@ const CreateJoiner = ({ onCreated }) => {
           <button 
             onClick={handleSubmit} 
             disabled={loading}
-            className="w-full py-4 bg-[#00ce7c] text-white rounded-xl font-bold shadow-xl shadow-emerald-200 hover:scale-[1.02] active:scale-95 transition-all text-lg flex items-center justify-center gap-3 disabled:opacity-70"
+            className="w-full py-4 bg-[#00ce7c] text-white rounded-xl font-bold shadow-xl shadow-emerald-200 hover:scale-[1.02] active:scale-95 transition-all text-lg flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed"
           >
              {loading ? <Loader2 className="animate-spin" /> : <><CheckCircle size={24} /> บันทึกและสร้าง Draft</>}
           </button>

@@ -3,7 +3,7 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getAuth } from "firebase/auth";
 
-// นำค่า Config นี้มาจาก Firebase Console -> Project Settings
+// ค่า Config ของโปรเจกต์คุณ (จากไฟล์ที่ส่งมา)
 const firebaseConfig = {
   apiKey: "AIzaSyBVzI69dZ27Rtc8RxMEZje6lq-VFwwwAfc",
   authDomain: "freshket-onboarding.firebaseapp.com",

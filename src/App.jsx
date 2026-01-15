@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Loader2 } from 'lucide-react';
+import { User, Mail, Loader2, ArrowRight } from 'lucide-react';
 import { collection, onSnapshot, query, orderBy, updateDoc, doc } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -51,7 +51,13 @@ const App = () => {
           accessToken: token,
           tokenExpiresAt: expiresAt
         });
-        alert(`ส่งลิงก์เรียบร้อยแล้ว!\n(จำลอง) Link: freshket.com/join/${token}`);
+        
+        // --- จุดที่แก้ไข: เปลี่ยน Domain Link ---
+        // เปลี่ยนเป็น URL ของระบบ Onboarding โดยเฉพาะ เพื่อไม่ให้ปะปนกับเว็บหลักบริษัท
+        const onboardingUrl = `http://localhost:5173/?view=JOINER&token=${token}`;
+        // หรือถ้ามี Subdomain เอง เช่น https://onboarding.freshket.co/join/...
+        
+        alert(`ส่งลิงก์เรียบร้อยแล้ว!\n(จำลองอีเมลที่พนักงานได้รับ)\n\nLink: ${onboardingUrl}`);
       }
       
       else if (type === 'VERIFY') {
@@ -91,13 +97,16 @@ const App = () => {
     }
 
     // Check 8-Hours Expiry Logic
-    if (emp.status === 'SENT' || emp.status === 'SUBMITTED' || emp.status === 'INCOMPLETE') {
+    if (emp.status === 'SENT' || emp.status === 'INCOMPLETE') {
       const now = new Date();
       const expire = new Date(emp.tokenExpiresAt);
       if (now > expire) {
         alert("ลิงก์หมดอายุแล้ว (เกิน 8 ชั่วโมง) กรุณาติดต่อ HR เพื่อขอลิงก์ใหม่");
         return;
       }
+    } else if (emp.status === 'SUBMITTED' || emp.status === 'VERIFIED' || emp.status === 'COMPLETED') {
+        alert("คุณได้ส่งข้อมูลครบถ้วนแล้ว อยู่ระหว่างการตรวจสอบ");
+        return;
     }
 
     setCurrentUser(emp);
@@ -143,13 +152,13 @@ const App = () => {
               <p className="text-slate-400 text-sm mt-2">กรุณาระบุอีเมลเพื่อเข้าสู่ระบบ (จำลองการกด Link)</p>
             </div>
             
-            {/* List of emails for testing convenience */}
-            <div className="text-left bg-slate-50 p-3 rounded border text-xs text-slate-500 mb-4">
-              <strong>Email สำหรับทดสอบ (จากฐานข้อมูลจริง):</strong>
+            {/* Helper List for Demo */}
+            <div className="text-left bg-slate-50 p-3 rounded border text-xs text-slate-500 mb-4 overflow-y-auto max-h-40">
+              <strong>Email สำหรับทดสอบ (คลิกเพื่อเลือก):</strong>
               <ul className="list-disc pl-4 mt-1 space-y-1">
                 {employees.map(e => (
                   <li key={e.id} className="cursor-pointer hover:text-emerald-600" onClick={() => handleJoinerLogin(e.employee.email)}>
-                    {e.employee.email} ({e.status})
+                    {e.employee.email} <span className={`font-bold ml-1 ${e.status === 'SENT' ? 'text-blue-500' : ''}`}>({e.status})</span>
                   </li>
                 ))}
               </ul>
@@ -166,9 +175,9 @@ const App = () => {
             </div>
             <button 
               onClick={() => handleJoinerLogin(document.getElementById('login-email').value)}
-              className="w-full py-3 bg-emerald-500 text-white font-bold rounded-lg shadow-lg hover:scale-[1.02] transition-all"
+              className="w-full py-3 bg-emerald-500 text-white font-bold rounded-lg shadow-lg hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
             >
-              เข้าสู่ระบบ (Access Link)
+              เข้าสู่ระบบ <ArrowRight size={18}/>
             </button>
             <div className="text-center mt-4">
                <button onClick={() => setView('ADMIN')} className="text-xs text-slate-400 hover:underline">กลับไปหน้า Admin</button>
@@ -184,11 +193,11 @@ const App = () => {
           />
         )}
 
-        {/* View Switcher for Demo purpose */}
+        {/* View Switcher for Demo */}
         {view !== 'LOGIN' && view !== 'JOINER' && (
            <div className="fixed bottom-4 right-4 bg-white p-2 rounded-lg shadow-lg border border-slate-200 z-50">
-              <button onClick={() => setView('LOGIN')} className="text-xs font-bold text-slate-500 hover:text-emerald-500">
-                 Switch to Employee View
+              <button onClick={() => setView('LOGIN')} className="text-xs font-bold text-slate-500 hover:text-emerald-500 flex items-center gap-1">
+                 <User size={14}/> Switch to Employee View
               </button>
            </div>
         )}

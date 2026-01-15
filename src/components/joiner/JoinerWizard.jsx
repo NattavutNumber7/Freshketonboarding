@@ -35,7 +35,7 @@ const JoinerWizard = ({ employeeData, onExit }) => {
   };
 
   const handleZipChange = async (zip, type, setAddrState) => {
-    // Logic หาที่อยู่จาก Zip (Mock) - ในการใช้งานจริงใส่ API ได้
+    // Logic หาที่อยู่จาก Zip (Mock)
     setAddrState(prev => ({ ...prev, [type]: { ...prev[type], zip } }));
   };
 
@@ -67,7 +67,7 @@ const JoinerWizard = ({ employeeData, onExit }) => {
       onExit(); // กลับไปหน้า Login
     } catch (e) {
       console.error(e);
-      alert("เกิดข้อผิดพลาดในการส่งข้อมูล");
+      alert("เกิดข้อผิดพลาดในการส่งข้อมูล: " + e.message);
     } finally {
       setLoading(false);
     }
@@ -191,7 +191,7 @@ const JoinerWizard = ({ employeeData, onExit }) => {
            <button 
              onClick={() => step < 4 ? setStep(s => s+1) : handleFinalSubmit()}
              disabled={loading}
-             className="px-8 py-3 bg-slate-800 text-white rounded-lg font-bold shadow-lg hover:bg-slate-900 transition-all flex items-center gap-2 disabled:opacity-70"
+             className="px-8 py-3 bg-slate-800 text-white rounded-lg font-bold shadow-lg hover:bg-slate-900 transition-all flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
            >
              {loading ? <Loader2 className="animate-spin"/> : (step === 4 ? 'ยืนยันส่งข้อมูล' : 'ถัดไป')} <ChevronRight size={16}/>
            </button>

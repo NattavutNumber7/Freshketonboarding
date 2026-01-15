@@ -6,10 +6,8 @@ import {
 import { InputLabel } from '../shared/UIComponents';
 import AddressSection from './AddressSection';
 import Stepper from './Stepper';
-import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '../../firebase';
 
-const JoinerWizard = ({ employeeData, onExit }) => {
+const JoinerWizard = ({ employeeData, onSubmit, onExit }) => {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   
@@ -51,26 +49,16 @@ const JoinerWizard = ({ employeeData, onExit }) => {
     }
 
     setLoading(true);
-    try {
-      const empRef = doc(db, "onboardings", employeeData.id);
-      await updateDoc(empRef, {
-        status: isComplete ? 'SUBMITTED' : 'INCOMPLETE',
-        submission: {
+    
+    // Mock Submit
+    setTimeout(() => {
+        onSubmit({
           personal,
           address,
-          documents, // Base64 strings
-          isDocsComplete: isComplete,
-          submittedAt: new Date().toISOString()
-        }
-      });
-      alert("ส่งข้อมูลเรียบร้อยแล้ว! ขอบคุณครับ");
-      onExit(); // กลับไปหน้า Login
-    } catch (e) {
-      console.error(e);
-      alert("เกิดข้อผิดพลาดในการส่งข้อมูล: " + e.message);
-    } finally {
-      setLoading(false);
-    }
+          documents,
+        }, isComplete);
+        setLoading(false);
+    }, 1000);
   };
 
   return (

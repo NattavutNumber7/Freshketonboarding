@@ -1,48 +1,39 @@
 import React from 'react';
-import { UserPlus, Plus, Send, Clock, Eye, Mail, CheckCircle, User } from 'lucide-react';
-
-const Badge = ({ status }) => {
-  const styles = {
-    DRAFT: 'bg-slate-100 text-slate-600 border-slate-200',
-    SENT: 'bg-blue-50 text-blue-600 border-blue-100',
-    SUBMITTED: 'bg-purple-50 text-purple-600 border-purple-100',
-    INCOMPLETE: 'bg-orange-50 text-orange-600 border-orange-100',
-    VERIFIED: 'bg-emerald-50 text-emerald-600 border-emerald-100',
-    COMPLETED: 'bg-slate-800 text-white border-slate-800',
-  };
-  return (
-    <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${styles[status] || styles.DRAFT}`}>
-      {status}
-    </span>
-  );
-};
+import { UserPlus, Plus, Send, Clock, Eye, Mail, CheckCircle, Copy, Link as LinkIcon } from 'lucide-react';
+import { Badge } from '../shared/UIComponents';
 
 const ActionButtons = ({ emp, onAction }) => {
-  // --- Status State Machine Logic ---
+  // --- Status Logic ---
   
-  // 1. DRAFT: เพิ่งสร้าง -> รอส่ง Link
   if (emp.status === 'DRAFT') {
     return (
-      <button onClick={() => onAction('SEND_OTP', emp)} className="text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 ml-auto">
+      <button onClick={() => onAction('SEND_OTP', emp)} className="text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 ml-auto border border-blue-100">
         <Send size={12} /> Send Link
       </button>
     );
   }
 
-  // 2. SENT: ส่งแล้ว -> รอพนักงานกรอก (เช็ค Expiry)
   if (emp.status === 'SENT') {
     const isExpired = new Date() > new Date(emp.tokenExpiresAt);
     return (
-      <div className="flex items-center justify-end gap-2 text-xs text-slate-400">
-        <Clock size={12} /> {isExpired ? <span className="text-red-500 font-bold">Expired</span> : 'Waiting...'}
+      <div className="flex flex-col items-end gap-1">
+        <div className="flex items-center gap-2">
+            <button onClick={() => onAction('COPY_LINK', emp)} className="text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1" title="Copy Link">
+                <Copy size={10} /> Copy
+            </button>
+            <div className={`text-xs flex items-center gap-1 ${isExpired ? 'text-red-500 font-bold' : 'text-slate-400'}`}>
+                <Clock size={12} /> {isExpired ? 'Expired' : 'Waiting...'}
+            </div>
+        </div>
         {isExpired && (
-          <button onClick={() => onAction('RESEND_OTP', emp)} className="text-orange-500 hover:text-orange-600 font-bold underline ml-1">Resend</button>
+          <button onClick={() => onAction('RESEND_OTP', emp)} className="text-orange-500 text-[10px] hover:underline font-bold">
+            Resend Link
+          </button>
         )}
       </div>
     );
   }
 
-  // 3. SUBMITTED / INCOMPLETE: พนักงานส่งแล้ว -> รอ Admin ตรวจ
   if (['SUBMITTED', 'INCOMPLETE'].includes(emp.status)) {
     return (
       <button onClick={() => onAction('VERIFY', emp)} className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 ml-auto transition-all ${
@@ -53,7 +44,6 @@ const ActionButtons = ({ emp, onAction }) => {
     );
   }
 
-  // 4. VERIFIED: ตรวจผ่านแล้ว -> รอส่งเมลต้อนรับ
   if (emp.status === 'VERIFIED') {
     return (
       <button onClick={() => onAction('SEND_WELCOME', emp)} className="text-emerald-600 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 ml-auto border border-emerald-200">
@@ -62,14 +52,13 @@ const ActionButtons = ({ emp, onAction }) => {
     );
   }
 
-  // 5. COMPLETED: จบกระบวนการ
   return <span className="text-xs text-slate-300 font-bold flex items-center justify-end gap-1"><CheckCircle size={12}/> Done</span>;
 };
 
 const AdminDashboard = ({ employees, onCreate, onAction }) => {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Header Stats */}
+      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { l: 'Pending Action', v: employees.filter(e => ['SUBMITTED','INCOMPLETE','VERIFIED'].includes(e.status)).length, c: 'text-orange-500 bg-orange-50' },
@@ -87,10 +76,10 @@ const AdminDashboard = ({ employees, onCreate, onAction }) => {
       {/* Action Bar */}
       <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
         <h2 className="font-bold text-lg text-slate-700 flex items-center gap-2">
-          <User className="text-emerald-500" size={20}/> รายชื่อพนักงาน (New Joiners)
+          <UserPlus className="text-emerald-500" size={20}/> รายชื่อพนักงาน (Mock Mode)
         </h2>
         <button onClick={onCreate} className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-bold text-sm transition-all flex items-center gap-2 shadow-lg shadow-emerald-200">
-          <Plus size={16} /> สร้างพนักงานใหม่ (Draft)
+          <Plus size={16} /> สร้างพนักงานใหม่
         </button>
       </div>
 
@@ -102,7 +91,7 @@ const AdminDashboard = ({ employees, onCreate, onAction }) => {
               <tr>
                 <th className="p-4">พนักงาน</th>
                 <th className="p-4">ตำแหน่ง / แผนก</th>
-                <th className="p-4">วันเริ่มงาน</th>
+                <th className="p-4">ข้อมูลการส่ง (Sent Info)</th>
                 <th className="p-4">สถานะ</th>
                 <th className="p-4 text-right">ดำเนินการ</th>
               </tr>
@@ -127,8 +116,17 @@ const AdminDashboard = ({ employees, onCreate, onAction }) => {
                     <div className="font-bold text-slate-600 text-xs">{emp.employee.position}</div>
                     <div className="text-[10px] text-slate-400 uppercase">{emp.employee.department}</div>
                   </td>
-                  <td className="p-4 text-xs font-medium text-slate-500">
-                    {emp.employee.startDate}
+                  <td className="p-4">
+                    {emp.sentAt ? (
+                        <div className="text-xs text-slate-500">
+                            <div className="font-bold flex items-center gap-1"><LinkIcon size={10}/> Sent At:</div>
+                            {new Date(emp.sentAt).toLocaleString('th-TH', { 
+                                day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+                            })}
+                        </div>
+                    ) : (
+                        <span className="text-xs text-slate-300">-</span>
+                    )}
                   </td>
                   <td className="p-4"><Badge status={emp.status} /></td>
                   <td className="p-4 text-right">

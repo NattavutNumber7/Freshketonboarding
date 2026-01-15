@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { UserPlus, Calendar, CheckCircle, Loader2 } from 'lucide-react';
 import { InputLabel, SectionHeader } from '../shared/UIComponents';
-import { collection, addDoc } from 'firebase/firestore';
-import { db } from '../../firebase';
+// import { collection, addDoc } from 'firebase/firestore'; // Comment out
+// import { db } from '../../firebase'; // Comment out
 
-const CreateJoiner = ({ onCreated }) => {
+const CreateJoiner = ({ onCreated, onMockSubmit, isMock }) => {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     name: '',
@@ -21,29 +21,29 @@ const CreateJoiner = ({ onCreated }) => {
     }
 
     setLoading(true);
-    try {
-      // Save to Firestore with 'DRAFT' status
-      await addDoc(collection(db, "onboardings"), {
-        employee: { ...form },
-        status: 'DRAFT',
-        createdAt: new Date().toISOString(),
-        submission: {}
-      });
-      
-      alert("สร้างข้อมูลพนักงานสำเร็จ! (สถานะ: Draft)");
-      onCreated();
-    } catch (error) {
-      console.error("Error adding document: ", error);
-      alert("เกิดข้อผิดพลาดในการบันทึก: " + error.message);
-    } finally {
-      setLoading(false);
+    
+    // Check Mock Mode
+    if (isMock && onMockSubmit) {
+        // Delay เล็กน้อยให้เหมือนจริง
+        setTimeout(() => {
+            onMockSubmit(form);
+            setLoading(false);
+        }, 500);
+        return;
     }
+
+    // Firebase Mode (ถ้าจะใช้ภายหลัง)
+    /* try {
+      await addDoc(collection(db, "onboardings"), { ... });
+      onCreated();
+    } catch (error) { ... } 
+    */
   };
 
   return (
     <div className="max-w-2xl mx-auto space-y-8 animate-in slide-in-from-bottom-4">
       <div className="fkt-card p-10">
-        <SectionHeader icon={UserPlus} title="สร้างพนักงานใหม่ (Initiation)" sub="Employee Information" />
+        <SectionHeader icon={UserPlus} title="สร้างพนักงานใหม่ (Mock Mode)" sub="Employee Information" />
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
            <div className="space-y-1.5 col-span-full">
@@ -101,7 +101,7 @@ const CreateJoiner = ({ onCreated }) => {
             disabled={loading}
             className="w-full py-4 bg-[#00ce7c] text-white rounded-xl font-bold shadow-xl shadow-emerald-200 hover:scale-[1.02] active:scale-95 transition-all text-lg flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed"
           >
-             {loading ? <Loader2 className="animate-spin" /> : <><CheckCircle size={24} /> บันทึกและสร้าง Draft</>}
+             {loading ? <Loader2 className="animate-spin" /> : <><CheckCircle size={24} /> บันทึกและสร้าง Draft (Mock)</>}
           </button>
         </div>
       </div>

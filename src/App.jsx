@@ -9,80 +9,135 @@ import AdminDashboard from './components/admin/AdminDashboard';
 import JoinerWizard from './components/joiner/JoinerWizard';
 import CreateJoiner from './components/admin/CreateJoiner';
 
+// Import Mock Data
+import { MOCK_DB_INITIAL, generateId } from './utils/mockData';
+
 const App = () => {
   const [view, setView] = useState('ADMIN'); // 'ADMIN', 'CREATE', 'LOGIN', 'JOINER'
-  const [employees, setEmployees] = useState([]);
-  const [loading, setLoading] = useState(true);
+  
+  // 1. Initialize State from LocalStorage
+  const [employees, setEmployees] = useState(() => {
+      const saved = localStorage.getItem('freshket_mock_db');
+      if (saved) {
+          return JSON.parse(saved);
+      }
+      return MOCK_DB_INITIAL;
+  });
+
   const [currentUser, setCurrentUser] = useState(null);
 
-  // --- Realtime Data Sync (Firestore) ---
+  // 2. Save to LocalStorage whenever state changes
   useEffect(() => {
-    // ดึงข้อมูล Realtime จาก Collection 'onboardings'
-    const q = query(collection(db, "onboardings"), orderBy("createdAt", "desc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setEmployees(data);
-      setLoading(false);
-    }, (error) => {
-      console.error("Error fetching data:", error);
-      setLoading(false);
-    });
+      localStorage.setItem('freshket_mock_db', JSON.stringify(employees));
+  }, [employees]);
 
-    return () => unsubscribe();
-  }, []);
+  // 3. Routing Logic
+  useEffect(() => {
+      const params = new URLSearchParams(window.location.search);
+      const viewParam = params.get('view');
+      const token = params.get('token');
 
-  // --- Actions ---
+      if (viewParam === 'JOINER' && token) {
+          const emp = employees.find(e => e.accessToken === token);
+          if (emp) {
+             const now = new Date();
+             const expire = new Date(emp.tokenExpiresAt);
+             
+             if (now > expire) {
+                 alert("ลิงก์หมดอายุแล้ว (Link Expired)");
+                 window.history.replaceState({}, document.title, "/");
+                 setView('LOGIN');
+             } else if (emp.status === 'COMPLETED') {
+                 alert("รายการนี้เสร็จสมบูรณ์แล้ว");
+                 window.history.replaceState({}, document.title, "/");
+                 setView('LOGIN');
+             } else {
+                 setCurrentUser(emp);
+                 setView('JOINER');
+             }
+          }
+      }
+  }, [employees]); // Add employees dependency to update when data changes
+
+  // --- Mock Actions ---
   
-  // Admin: จัดการสถานะต่างๆ
   const handleAdminAction = async (type, emp) => {
     try {
-      const empRef = doc(db, "onboardings", emp.id);
-
       if (type === 'SEND_OTP' || type === 'RESEND_OTP') {
-        // สร้าง Token และกำหนดเวลาหมดอายุ 8 ชม.
-        const token = Math.random().toString(36).substr(2, 9);
+        const token = generateId();
+        const sentTime = new Date().toISOString();
         const expiresAt = new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString();
         
-        await updateDoc(empRef, {
-          status: 'SENT',
-          accessToken: token,
-          tokenExpiresAt: expiresAt
-        });
-        
-        // --- จุดที่แก้ไข: เปลี่ยน Domain Link ---
-        // เปลี่ยนเป็น URL ของระบบ Onboarding โดยเฉพาะ เพื่อไม่ให้ปะปนกับเว็บหลักบริษัท
-        const onboardingUrl = `http://localhost:5173/?view=JOINER&token=${token}`;
-        // หรือถ้ามี Subdomain เอง เช่น https://onboarding.freshket.co/join/...
-        
-        alert(`ส่งลิงก์เรียบร้อยแล้ว!\n(จำลองอีเมลที่พนักงานได้รับ)\n\nLink: ${onboardingUrl}`);
+        setEmployees(prev => prev.map(e => e.id === emp.id ? {
+            ...e,
+            status: 'SENT',
+            accessToken: token,
+            tokenExpiresAt: expiresAt,
+            sentAt: sentTime
+        } : e));
+
+        const link = `http://localhost:5173/?view=JOINER&token=${token}`;
+        alert(`✅ ส่งลิงก์เรียบร้อย!\nToken: ${token}`);
+      }
+      
+      else if (type === 'COPY_LINK') {
+         const link = `http://localhost:5173/?view=JOINER&token=${emp.accessToken}`;
+         navigator.clipboard.writeText(link).then(() => {
+             alert(`คัดลอกลิงก์เรียบร้อย!\n\n${link}`);
+         });
       }
       
       else if (type === 'VERIFY') {
         if(confirm("คุณได้ตรวจสอบข้อมูลและเอกสารทั้งหมดแล้วใช่หรือไม่?")) {
-          await updateDoc(empRef, { 
-            status: 'VERIFIED', 
-            verifiedAt: new Date().toISOString() 
-          });
+          setEmployees(prev => prev.map(e => e.id === emp.id ? { 
+              ...e, 
+              status: 'VERIFIED', 
+              verifiedAt: new Date().toISOString() 
+          } : e));
         }
       }
       
       else if (type === 'SEND_WELCOME') {
-        await updateDoc(empRef, { 
-          status: 'COMPLETED', 
-          welcomeSentAt: new Date().toISOString() 
-        });
+        setEmployees(prev => prev.map(e => e.id === emp.id ? { 
+            ...e, 
+            status: 'COMPLETED', 
+            welcomeSentAt: new Date().toISOString() 
+        } : e));
         alert("ส่งอีเมลต้อนรับเรียบร้อยแล้ว!");
       }
+
+      // --- เพิ่ม Action สำหรับการลบข้อมูล ---
+      else if (type === 'DELETE') {
+        if(confirm(`คุณต้องการลบข้อมูลของ "${emp.employee.name}" ใช่หรือไม่?\n(การกระทำนี้ไม่สามารถเรียกคืนได้)`)) {
+            setEmployees(prev => prev.filter(e => e.id !== emp.id));
+            // ถ้าลบข้อมูลที่กำลังเปิดดูอยู่ (ในกรณีหายาก)
+            if (currentUser && currentUser.id === emp.id) {
+                setCurrentUser(null);
+                setView('LOGIN');
+            }
+        }
+      }
+
     } catch (error) {
       console.error("Action Error:", error);
       alert("เกิดข้อผิดพลาด: " + error.message);
     }
   };
 
-  // Joiner: จำลองการ Login (ในของจริงคือการคลิกลิงก์จากอีเมล)
+  const handleCreateEmployee = (data) => {
+      const newEmp = {
+        id: 'emp-' + generateId(),
+        employee: { ...data },
+        status: 'DRAFT',
+        createdAt: new Date().toISOString(),
+        submission: {}
+      };
+      setEmployees(prev => [newEmp, ...prev]);
+      alert("สร้างพนักงานใหม่สำเร็จ! (Mock)");
+      setView('ADMIN');
+  }
+
+  // Joiner Login Logic
   const handleJoinerLogin = (email) => {
     const emp = employees.find(e => e.employee.email === email);
     
@@ -96,12 +151,11 @@ const App = () => {
       return;
     }
 
-    // Check 8-Hours Expiry Logic
     if (emp.status === 'SENT' || emp.status === 'INCOMPLETE') {
       const now = new Date();
       const expire = new Date(emp.tokenExpiresAt);
       if (now > expire) {
-        alert("ลิงก์หมดอายุแล้ว (เกิน 8 ชั่วโมง) กรุณาติดต่อ HR เพื่อขอลิงก์ใหม่");
+        alert("ลิงก์หมดอายุแล้ว");
         return;
       }
     } else if (emp.status === 'SUBMITTED' || emp.status === 'VERIFIED' || emp.status === 'COMPLETED') {
@@ -112,6 +166,23 @@ const App = () => {
     setCurrentUser(emp);
     setView('JOINER');
   };
+  
+  const handleJoinerSubmit = (data, isComplete) => {
+      setEmployees(prev => prev.map(e => e.id === currentUser.id ? {
+          ...e,
+          status: isComplete ? 'SUBMITTED' : 'INCOMPLETE',
+          submission: { 
+              ...data, 
+              submittedAt: new Date().toISOString(),
+              isDocsComplete: isComplete 
+          }
+      } : e));
+      
+      alert("ส่งข้อมูลเรียบร้อยแล้ว!");
+      setCurrentUser(null);
+      setView('LOGIN');
+      window.history.replaceState({}, document.title, "/");
+  }
 
   if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-emerald-500" size={40}/></div>;
 
@@ -119,7 +190,7 @@ const App = () => {
     <div className="min-h-screen bg-[#f8fafc] font-sans text-slate-800 pb-20">
       <Navbar 
         isAdmin={view === 'ADMIN' || view === 'CREATE'} 
-        setIsAdmin={() => {}} // Dummy prop
+        setIsAdmin={() => {}} 
         adminTab={view === 'CREATE' ? 'create' : 'dashboard'}
         setAdminTab={(tab) => setView(tab === 'create' ? 'CREATE' : 'ADMIN')}
         setStep={() => {}} 
@@ -127,7 +198,6 @@ const App = () => {
 
       <main className="max-w-6xl mx-auto p-4 md:p-8 md:pt-10">
         
-        {/* --- ADMIN DASHBOARD --- */}
         {view === 'ADMIN' && (
           <AdminDashboard 
             employees={employees} 
@@ -136,12 +206,10 @@ const App = () => {
           />
         )}
 
-        {/* --- CREATE NEW EMPLOYEE --- */}
         {view === 'CREATE' && (
-          <CreateJoiner onCreated={() => setView('ADMIN')} />
+          <CreateJoiner onMockSubmit={handleCreateEmployee} isMock={true} />
         )}
 
-        {/* --- MOCK LOGIN SCREEN --- */}
         {view === 'LOGIN' && (
           <div className="max-w-md mx-auto mt-20 bg-white p-8 rounded-2xl border border-slate-100 shadow-xl shadow-slate-200/50 text-center space-y-6">
             <div className="w-16 h-16 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -149,16 +217,15 @@ const App = () => {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-slate-800">ยินดีต้อนรับสู่ Freshket!</h1>
-              <p className="text-slate-400 text-sm mt-2">กรุณาระบุอีเมลเพื่อเข้าสู่ระบบ (จำลองการกด Link)</p>
+              <p className="text-slate-400 text-sm mt-2">กรุณาระบุอีเมลเพื่อเข้าสู่ระบบ</p>
             </div>
             
-            {/* Helper List for Demo */}
             <div className="text-left bg-slate-50 p-3 rounded border text-xs text-slate-500 mb-4 overflow-y-auto max-h-40">
-              <strong>Email สำหรับทดสอบ (คลิกเพื่อเลือก):</strong>
+              <strong>Email สำหรับทดสอบ:</strong>
               <ul className="list-disc pl-4 mt-1 space-y-1">
                 {employees.map(e => (
                   <li key={e.id} className="cursor-pointer hover:text-emerald-600" onClick={() => handleJoinerLogin(e.employee.email)}>
-                    {e.employee.email} <span className={`font-bold ml-1 ${e.status === 'SENT' ? 'text-blue-500' : ''}`}>({e.status})</span>
+                    {e.employee.email} ({e.status})
                   </li>
                 ))}
               </ul>
@@ -185,21 +252,12 @@ const App = () => {
           </div>
         )}
 
-        {/* --- EMPLOYEE WIZARD --- */}
         {view === 'JOINER' && currentUser && (
           <JoinerWizard 
             employeeData={currentUser} 
-            onExit={() => { setView('LOGIN'); setCurrentUser(null); }}
+            onSubmit={handleJoinerSubmit}
+            onExit={() => { setView('LOGIN'); setCurrentUser(null); window.history.replaceState({}, document.title, "/"); }}
           />
-        )}
-
-        {/* View Switcher for Demo */}
-        {view !== 'LOGIN' && view !== 'JOINER' && (
-           <div className="fixed bottom-4 right-4 bg-white p-2 rounded-lg shadow-lg border border-slate-200 z-50">
-              <button onClick={() => setView('LOGIN')} className="text-xs font-bold text-slate-500 hover:text-emerald-500 flex items-center gap-1">
-                 <User size={14}/> Switch to Employee View
-              </button>
-           </div>
         )}
 
       </main>

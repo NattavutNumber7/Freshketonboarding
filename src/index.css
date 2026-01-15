@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('[https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sarabun:wght@300;400;500;600;700;800&display=swap](https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sarabun:wght@300;400;500;600;700;800&display=swap)');
+
+:root {
+  --fkt-green: #00ce7c;
+  --fkt-orange: #F37021;
+  --fkt-bg: #f8fafc;
+}
+
+body {
+  font-family: 'Sarabun', sans-serif;
+  background-color: var(--fkt-bg);
+  color: #334155;
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-inter { font-family: 'Inter', sans-serif; }
+
+.fkt-card {
+  @apply bg-white border border-slate-100 rounded-xl p-6 shadow-sm;
+  box-shadow: 0 4px 15px -5px rgba(0, 0, 0, 0.05);
+}
+
+.status-pill {
+  @apply px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--fkt-green) !important;
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(0, 206, 124, 0.08);
+}
+
+.step-line {
+  height: 2px;
+  flex-grow: 1;
+  background: #f1f5f9;
+  margin: 0 10px;
+  margin-top: 18px;
+}
+.step-line.active { background: var(--fkt-green); }
+
+/* Animation Utilities */
+.animate-in { animation: fadeIn 0.5s ease-out forwards; }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}

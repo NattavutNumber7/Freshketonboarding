@@ -1,37 +1,64 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Loader2, ArrowRight } from 'lucide-react';
-import { collection, onSnapshot, query, orderBy, updateDoc, doc } from 'firebase/firestore';
-import { db } from './firebase';
+import { User, Mail, Loader2, ArrowRight, ShieldCheck } from 'lucide-react';
 
 // Import Components
 import Navbar from './components/shared/Navbar';
 import AdminDashboard from './components/admin/AdminDashboard';
-import JoinerWizard from './components/joiner/JoinerWizard';
 import CreateJoiner from './components/admin/CreateJoiner';
+import JoinerWizard from './components/joiner/JoinerWizard';
+
+// Mock Admin Login Component (Internal)
+const AdminLogin = ({ onLogin }) => {
+  const [password, setPassword] = useState('');
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] animate-in">
+      <div className="fkt-card max-w-sm w-full text-center p-8 border-t-4 border-t-slate-800">
+        <div className="w-16 h-16 bg-slate-100 text-slate-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-inner">
+          <ShieldCheck size={32} />
+        </div>
+        <h2 className="text-2xl font-black text-slate-800 mb-2">Admin Portal</h2>
+        <p className="text-slate-400 text-sm mb-8 font-inter">Enter password to manage employees</p>
+        <div className="space-y-4">
+          <input 
+            type="password" 
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="fkt-input text-center tracking-widest"
+            placeholder="Password (1234)"
+          />
+          <button 
+            onClick={() => password === '1234' ? onLogin() : alert('Wrong Password')}
+            className="w-full py-3.5 bg-slate-800 text-white rounded-xl font-bold shadow-lg hover:bg-slate-900 active:scale-95 transition-all flex items-center justify-center gap-2"
+          >
+            Login <ArrowRight size={18} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // Import Mock Data
 import { MOCK_DB_INITIAL, generateId } from './utils/mockData';
 
 const App = () => {
-  const [view, setView] = useState('ADMIN'); // 'ADMIN', 'CREATE', 'LOGIN', 'JOINER'
+  // State
+  const [view, setView] = useState('LOGIN'); // 'LOGIN', 'ADMIN_LOGIN', 'ADMIN', 'CREATE', 'JOINER'
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
   
-  // 1. Initialize State from LocalStorage
+  // Data State (Mock with LocalStorage)
   const [employees, setEmployees] = useState(() => {
       const saved = localStorage.getItem('freshket_mock_db');
-      if (saved) {
-          return JSON.parse(saved);
-      }
-      return MOCK_DB_INITIAL;
+      return saved ? JSON.parse(saved) : MOCK_DB_INITIAL;
   });
 
-  const [currentUser, setCurrentUser] = useState(null);
-
-  // 2. Save to LocalStorage whenever state changes
+  // Save data on change
   useEffect(() => {
       localStorage.setItem('freshket_mock_db', JSON.stringify(employees));
   }, [employees]);
 
-  // 3. Routing Logic
+  // Routing Logic (Handle URL Links)
   useEffect(() => {
       const params = new URLSearchParams(window.location.search);
       const viewParam = params.get('view');
@@ -40,27 +67,34 @@ const App = () => {
       if (viewParam === 'JOINER' && token) {
           const emp = employees.find(e => e.accessToken === token);
           if (emp) {
-             const now = new Date();
-             const expire = new Date(emp.tokenExpiresAt);
-             
-             if (now > expire) {
-                 alert("ลิงก์หมดอายุแล้ว (Link Expired)");
-                 window.history.replaceState({}, document.title, "/");
-                 setView('LOGIN');
-             } else if (emp.status === 'COMPLETED') {
-                 alert("รายการนี้เสร็จสมบูรณ์แล้ว");
-                 window.history.replaceState({}, document.title, "/");
-                 setView('LOGIN');
-             } else {
-                 setCurrentUser(emp);
-                 setView('JOINER');
-             }
+              const now = new Date();
+              const expire = new Date(emp.tokenExpiresAt);
+              
+              if (now > expire) {
+                  alert("Link Expired");
+                  window.history.replaceState({}, document.title, "/");
+              } else if (emp.status === 'COMPLETED') {
+                  alert("Process Completed");
+                  window.history.replaceState({}, document.title, "/");
+              } else {
+                  setCurrentUser(emp);
+                  setView('JOINER');
+              }
           }
       }
-  }, [employees]); // Add employees dependency to update when data changes
+  }, []);
 
-  // --- Mock Actions ---
-  
+  // --- Handlers ---
+  const handleAdminLogin = () => {
+    setIsAdminLoggedIn(true);
+    setView('ADMIN');
+  };
+
+  const handleLogout = () => {
+    setIsAdminLoggedIn(false);
+    setView('LOGIN');
+  };
+
   const handleAdminAction = async (type, emp) => {
     try {
       if (type === 'SEND_OTP' || type === 'RESEND_OTP') {
@@ -69,58 +103,34 @@ const App = () => {
         const expiresAt = new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString();
         
         setEmployees(prev => prev.map(e => e.id === emp.id ? {
-            ...e,
-            status: 'SENT',
-            accessToken: token,
-            tokenExpiresAt: expiresAt,
-            sentAt: sentTime
+            ...e, status: 'SENT', accessToken: token, tokenExpiresAt: expiresAt, sentAt: sentTime
         } : e));
 
-        const link = `http://localhost:5173/?view=JOINER&token=${token}`;
-        alert(`✅ ส่งลิงก์เรียบร้อย!\nToken: ${token}`);
+        const link = `${window.location.origin}/?view=JOINER&token=${token}`;
+        navigator.clipboard.writeText(link);
+        alert(`Link Copied!\n${link}`);
       }
-      
       else if (type === 'COPY_LINK') {
-         const link = `http://localhost:5173/?view=JOINER&token=${emp.accessToken}`;
-         navigator.clipboard.writeText(link).then(() => {
-             alert(`คัดลอกลิงก์เรียบร้อย!\n\n${link}`);
-         });
+         const link = `${window.location.origin}/?view=JOINER&token=${emp.accessToken}`;
+         navigator.clipboard.writeText(link);
+         alert("Link Copied!");
       }
-      
       else if (type === 'VERIFY') {
-        if(confirm("คุณได้ตรวจสอบข้อมูลและเอกสารทั้งหมดแล้วใช่หรือไม่?")) {
-          setEmployees(prev => prev.map(e => e.id === emp.id ? { 
-              ...e, 
-              status: 'VERIFIED', 
-              verifiedAt: new Date().toISOString() 
-          } : e));
+        if(confirm("Verify documents?")) {
+          setEmployees(prev => prev.map(e => e.id === emp.id ? { ...e, status: 'VERIFIED', verifiedAt: new Date().toISOString() } : e));
         }
       }
-      
       else if (type === 'SEND_WELCOME') {
-        setEmployees(prev => prev.map(e => e.id === emp.id ? { 
-            ...e, 
-            status: 'COMPLETED', 
-            welcomeSentAt: new Date().toISOString() 
-        } : e));
-        alert("ส่งอีเมลต้อนรับเรียบร้อยแล้ว!");
+        setEmployees(prev => prev.map(e => e.id === emp.id ? { ...e, status: 'COMPLETED', welcomeSentAt: new Date().toISOString() } : e));
+        alert("Welcome email sent!");
       }
-
-      // --- เพิ่ม Action สำหรับการลบข้อมูล ---
       else if (type === 'DELETE') {
-        if(confirm(`คุณต้องการลบข้อมูลของ "${emp.employee.name}" ใช่หรือไม่?\n(การกระทำนี้ไม่สามารถเรียกคืนได้)`)) {
+        if(confirm(`Delete ${emp.employee.name}?`)) {
             setEmployees(prev => prev.filter(e => e.id !== emp.id));
-            // ถ้าลบข้อมูลที่กำลังเปิดดูอยู่ (ในกรณีหายาก)
-            if (currentUser && currentUser.id === emp.id) {
-                setCurrentUser(null);
-                setView('LOGIN');
-            }
         }
       }
-
     } catch (error) {
-      console.error("Action Error:", error);
-      alert("เกิดข้อผิดพลาด: " + error.message);
+      alert("Error: " + error.message);
     }
   };
 
@@ -133,34 +143,16 @@ const App = () => {
         submission: {}
       };
       setEmployees(prev => [newEmp, ...prev]);
-      alert("สร้างพนักงานใหม่สำเร็จ! (Mock)");
       setView('ADMIN');
-  }
+  };
 
-  // Joiner Login Logic
   const handleJoinerLogin = (email) => {
     const emp = employees.find(e => e.employee.email === email);
+    if (!emp) return alert("Not found");
+    if (emp.status === 'DRAFT') return alert("Link not sent yet");
     
-    if (!emp) {
-      alert("ไม่พบข้อมูลพนักงานในระบบ");
-      return;
-    }
-
-    if (emp.status === 'DRAFT') {
-      alert("HR ยังไม่ได้ส่งลิงก์ให้คุณ");
-      return;
-    }
-
-    if (emp.status === 'SENT' || emp.status === 'INCOMPLETE') {
-      const now = new Date();
-      const expire = new Date(emp.tokenExpiresAt);
-      if (now > expire) {
-        alert("ลิงก์หมดอายุแล้ว");
-        return;
-      }
-    } else if (emp.status === 'SUBMITTED' || emp.status === 'VERIFIED' || emp.status === 'COMPLETED') {
-        alert("คุณได้ส่งข้อมูลครบถ้วนแล้ว อยู่ระหว่างการตรวจสอบ");
-        return;
+    if (['SENT', 'INCOMPLETE'].includes(emp.status)) {
+        if (new Date() > new Date(emp.tokenExpiresAt)) return alert("Link expired");
     }
 
     setCurrentUser(emp);
@@ -171,84 +163,74 @@ const App = () => {
       setEmployees(prev => prev.map(e => e.id === currentUser.id ? {
           ...e,
           status: isComplete ? 'SUBMITTED' : 'INCOMPLETE',
-          submission: { 
-              ...data, 
-              submittedAt: new Date().toISOString(),
-              isDocsComplete: isComplete 
-          }
+          submission: { ...data, submittedAt: new Date().toISOString(), isDocsComplete: isComplete }
       } : e));
       
-      alert("ส่งข้อมูลเรียบร้อยแล้ว!");
+      alert("Submitted!");
       setCurrentUser(null);
       setView('LOGIN');
       window.history.replaceState({}, document.title, "/");
-  }
-
-  if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-emerald-500" size={40}/></div>;
+  };
 
   return (
     <div className="min-h-screen bg-[#f8fafc] font-sans text-slate-800 pb-20">
       <Navbar 
-        isAdmin={view === 'ADMIN' || view === 'CREATE'} 
-        setIsAdmin={() => {}} 
-        adminTab={view === 'CREATE' ? 'create' : 'dashboard'}
-        setAdminTab={(tab) => setView(tab === 'create' ? 'CREATE' : 'ADMIN')}
-        setStep={() => {}} 
+        isLoggedIn={isAdminLoggedIn} 
+        onLogout={handleLogout}
+        setView={setView}
+        isAdmin={isAdminLoggedIn} // Compatible prop
+        setIsAdmin={setIsAdminLoggedIn} // Compatible prop
+        adminTab={view === 'ADMIN' ? 'dashboard' : 'create'} // Compatible prop
+        setAdminTab={(tab) => setView(tab === 'dashboard' ? 'ADMIN' : 'CREATE')} // Compatible prop
+        setStep={() => {}} // Compatible prop
       />
 
-      <main className="max-w-6xl mx-auto p-4 md:p-8 md:pt-10">
+      <main className="max-w-6xl mx-auto p-4 md:p-8">
         
-        {view === 'ADMIN' && (
-          <AdminDashboard 
-            employees={employees} 
-            onCreate={() => setView('CREATE')} 
-            onAction={handleAdminAction} 
-          />
+        {view === 'ADMIN' && isAdminLoggedIn && (
+          <AdminDashboard employees={employees} onCreate={() => setView('CREATE')} onAction={handleAdminAction} />
         )}
 
-        {view === 'CREATE' && (
-          <CreateJoiner onMockSubmit={handleCreateEmployee} isMock={true} />
+        {view === 'ADMIN_LOGIN' && (
+           <AdminLogin onLogin={handleAdminLogin} />
+        )}
+
+        {view === 'CREATE' && isAdminLoggedIn && (
+          <CreateJoiner onMockSubmit={handleCreateEmployee} isMock={true} onCreated={() => setView('ADMIN')} />
         )}
 
         {view === 'LOGIN' && (
-          <div className="max-w-md mx-auto mt-20 bg-white p-8 rounded-2xl border border-slate-100 shadow-xl shadow-slate-200/50 text-center space-y-6">
-            <div className="w-16 h-16 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
-              <User size={32} />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-slate-800">ยินดีต้อนรับสู่ Freshket!</h1>
-              <p className="text-slate-400 text-sm mt-2">กรุณาระบุอีเมลเพื่อเข้าสู่ระบบ</p>
-            </div>
-            
-            <div className="text-left bg-slate-50 p-3 rounded border text-xs text-slate-500 mb-4 overflow-y-auto max-h-40">
-              <strong>Email สำหรับทดสอบ:</strong>
-              <ul className="list-disc pl-4 mt-1 space-y-1">
-                {employees.map(e => (
-                  <li key={e.id} className="cursor-pointer hover:text-emerald-600" onClick={() => handleJoinerLogin(e.employee.email)}>
-                    {e.employee.email} ({e.status})
-                  </li>
-                ))}
-              </ul>
-            </div>
+          <div className="flex flex-col items-center justify-center min-h-[60vh] animate-in">
+             <div className="fkt-card max-w-md w-full text-center p-8">
+                <div className="w-16 h-16 bg-freshket-green/10 text-freshket-green rounded-2xl flex items-center justify-center mx-auto mb-6">
+                  <User size={32} />
+                </div>
+                <h1 className="text-2xl font-black text-slate-800 mb-2">Welcome to Freshket!</h1>
+                <p className="text-slate-400 text-sm mb-8">New Employee Onboarding</p>
+                
+                <div className="text-left bg-slate-50 p-4 rounded-xl border border-slate-100 text-xs text-slate-500 mb-6 max-h-32 overflow-y-auto">
+                  <p className="font-bold mb-2 uppercase tracking-wider text-slate-400">👇 Click email to test (Mock)</p>
+                  <ul className="space-y-1.5">
+                    {employees.map(e => (
+                      <li key={e.id} className="cursor-pointer hover:text-freshket-green hover:underline flex justify-between" onClick={() => handleJoinerLogin(e.employee.email)}>
+                        <span>{e.employee.email}</span>
+                        <span className="text-[10px] bg-white border px-1.5 rounded">{e.status}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
 
-            <div className="relative">
-              <input 
-                id="login-email"
-                type="email" 
-                placeholder="name@freshket.com" 
-                className="w-full p-3 border rounded-lg pl-10" 
-              />
-              <Mail className="absolute left-3 top-3.5 text-slate-400" size={18}/>
-            </div>
-            <button 
-              onClick={() => handleJoinerLogin(document.getElementById('login-email').value)}
-              className="w-full py-3 bg-emerald-500 text-white font-bold rounded-lg shadow-lg hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
-            >
-              เข้าสู่ระบบ <ArrowRight size={18}/>
-            </button>
-            <div className="text-center mt-4">
-               <button onClick={() => setView('ADMIN')} className="text-xs text-slate-400 hover:underline">กลับไปหน้า Admin</button>
-            </div>
+                <div className="relative">
+                  <Mail className="absolute left-4 top-3.5 text-slate-400" size={18}/>
+                  <input id="login-email" type="email" placeholder="name@freshket.com" className="fkt-input pl-12" />
+                </div>
+                <button 
+                  onClick={() => handleJoinerLogin(document.getElementById('login-email').value)}
+                  className="w-full mt-4 fkt-btn flex items-center justify-center gap-2"
+                >
+                  Login <ArrowRight size={18}/>
+                </button>
+             </div>
           </div>
         )}
 

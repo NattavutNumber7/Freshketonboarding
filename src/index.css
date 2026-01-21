@@ -20,28 +20,20 @@ body {
 .font-inter { font-family: 'Inter', sans-serif; }
 
 .fkt-card {
-  @apply bg-white border border-slate-100 rounded-xl p-6 shadow-sm;
-  box-shadow: 0 4px 15px -5px rgba(0, 0, 0, 0.05);
+  @apply bg-white border border-slate-100 rounded-xl p-6 shadow-[0_4px_15px_-5px_rgba(0,0,0,0.05)];
+}
+
+.fkt-input {
+  @apply w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-freshket-green focus:ring-4 focus:ring-freshket-green/10 transition-all;
+}
+
+.fkt-btn {
+  @apply px-4 py-2 bg-freshket-green text-white rounded-lg font-bold shadow-lg shadow-emerald-200 hover:scale-[1.02] active:scale-95 transition-all;
 }
 
 .status-pill {
   @apply px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider;
 }
-
-input:focus, select:focus, textarea:focus {
-  border-color: var(--fkt-green) !important;
-  outline: none;
-  box-shadow: 0 0 0 4px rgba(0, 206, 124, 0.08);
-}
-
-.step-line {
-  height: 2px;
-  flex-grow: 1;
-  background: #f1f5f9;
-  margin: 0 10px;
-  margin-top: 18px;
-}
-.step-line.active { background: var(--fkt-green); }
 
 /* Animation Utilities */
 .animate-in { animation: fadeIn 0.5s ease-out forwards; }

@@ -1,19 +1,17 @@
 import React, { useState } from 'react';
-import { UserPlus, Calendar, CheckCircle, Loader2 } from 'lucide-react';
-import { InputLabel, SectionHeader } from '../shared/UIComponents';
+import { ChevronLeft, Mail, Loader2, UserPlus } from 'lucide-react';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
+import { Card, InputGroup, Button } from '../shared/UIComponents';
 
-const CreateJoiner = ({ onCreated }) => {
+const CreateJoiner = ({ onCreated, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
-    name: '', email: '', position: '', department: 'Technology & Innovation', startDate: ''
+    name: '', email: '', position: '', department: 'Technology', startDate: ''
   });
 
   const handleSubmit = async () => {
-    if (!form.name || !form.email || !form.position || !form.startDate) {
-      alert("กรุณากรอกข้อมูลให้ครบถ้วน"); return;
-    }
+    if (!form.name || !form.email || !form.position || !form.startDate) return;
     setLoading(true);
     try {
       await addDoc(collection(db, "onboardings"), {
@@ -22,29 +20,68 @@ const CreateJoiner = ({ onCreated }) => {
         createdAt: new Date().toISOString(),
         submission: {}
       });
-      alert("สร้างพนักงานสำเร็จ!");
       onCreated();
     } catch (error) {
-      alert("Error: " + error.message);
+      console.error(error);
+      alert("Error creating employee");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8 animate-in slide-in-from-bottom-4">
-      <div className="fkt-card p-10">
-        <SectionHeader icon={UserPlus} title="สร้างพนักงานใหม่" sub="Employee Information" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-           <div className="col-span-full space-y-1"><InputLabel label="ชื่อ-นามสกุล" required /><input type="text" value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="w-full p-3 border rounded-lg" /></div>
-           <div className="col-span-full space-y-1"><InputLabel label="อีเมล" required /><input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} className="w-full p-3 border rounded-lg" /></div>
-           <div className="space-y-1"><InputLabel label="ตำแหน่ง" required /><input type="text" value={form.position} onChange={e => setForm({...form, position: e.target.value})} className="w-full p-3 border rounded-lg" /></div>
-           <div className="space-y-1"><InputLabel label="แผนก" required /><select value={form.department} onChange={e => setForm({...form, department: e.target.value})} className="w-full p-3 border rounded-lg"><option>Technology</option><option>Operations</option><option>Commercial</option><option>HR</option></select></div>
-           <div className="col-span-full space-y-1"><InputLabel label="วันเริ่มงาน" required /><input type="date" value={form.startDate} onChange={e => setForm({...form, startDate: e.target.value})} className="w-full p-3 border rounded-lg" /></div>
-        </div>
-        <div className="pt-8"><button onClick={handleSubmit} disabled={loading} className="w-full py-4 bg-[#00ce7c] text-white rounded-xl font-bold shadow-xl">{loading ? <Loader2 className="animate-spin mx-auto"/> : "บันทึกข้อมูล"}</button></div>
+    <div className="max-w-2xl mx-auto animate-in slide-in-from-bottom-8 duration-500">
+      <div className="mb-6">
+        <button onClick={onCancel} className="text-sm font-bold text-slate-400 hover:text-slate-600 flex items-center gap-1 mb-2">
+            <ChevronLeft size={16}/> Back to Dashboard
+        </button>
+        <h1 className="text-2xl font-black text-slate-800">Add New Employee</h1>
+        <p className="text-slate-500">Create a profile to start the onboarding process.</p>
       </div>
+      
+      <Card className="p-8">
+         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="col-span-full">
+                <InputGroup label="Full Name" required>
+                    <input className="fkt-input" placeholder="e.g. Somchai Jaidee" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
+                </InputGroup>
+            </div>
+            <div className="col-span-full">
+                <InputGroup label="Email Address" required>
+                    <div className="relative">
+                        <Mail className="absolute left-3 top-3.5 text-slate-400" size={18} />
+                        <input className="fkt-input pl-10" type="email" placeholder="email@freshket.com" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
+                    </div>
+                </InputGroup>
+            </div>
+            <InputGroup label="Position" required>
+                <input className="fkt-input" placeholder="e.g. Senior Developer" value={form.position} onChange={e => setForm({...form, position: e.target.value})} />
+            </InputGroup>
+            <InputGroup label="Department" required>
+                <select className="fkt-input appearance-none" value={form.department} onChange={e => setForm({...form, department: e.target.value})}>
+                    <option>Technology</option>
+                    <option>Product</option>
+                    <option>Commercial</option>
+                    <option>Operations</option>
+                    <option>People</option>
+                </select>
+            </InputGroup>
+            <div className="col-span-full">
+                <InputGroup label="Start Date" required>
+                    <input type="date" className="fkt-input" value={form.startDate} onChange={e => setForm({...form, startDate: e.target.value})} />
+                </InputGroup>
+            </div>
+         </div>
+         
+         <div className="mt-8 flex justify-end gap-3">
+             <Button variant="outline" onClick={onCancel}>Cancel</Button>
+             <Button onClick={handleSubmit} disabled={loading}>
+                {loading ? <Loader2 className="animate-spin" /> : <><UserPlus size={18} /> Create Profile</>}
+             </Button>
+         </div>
+      </Card>
     </div>
   );
 };
+
 export default CreateJoiner;

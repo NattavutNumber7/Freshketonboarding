@@ -104,7 +104,8 @@ const AdminDashboard = ({ employees, onCreate, onAction }) => {
                       <Badge status={emp.status} />
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                      {/* แก้ไขตรงนี้: ลบ class opacity-0 และ group-hover ออก เพื่อให้แสดงปุ่มตลอดเวลา */}
+                      <div className="flex items-center justify-end gap-2">
                          {/* Dynamic Actions Based on Status */}
                          {emp.status === 'DRAFT' && (
                             <Button variant="primary" className="!px-3 !py-1.5 !text-xs" onClick={() => onAction('SEND_OTP', emp)}>
